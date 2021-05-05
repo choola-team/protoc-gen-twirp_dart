@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"github.com/apptreesoftware/protoc-gen-twirp_dart/example/go/config/model"
-	"github.com/apptreesoftware/protoc-gen-twirp_dart/example/go/config/service"
 	"log"
 	"math/rand"
 	"net/http"
 	"time"
+
+	"github.com/choola-team/protoc-gen-twirp_dart/example/go/config/model"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/twitchtv/twirp"

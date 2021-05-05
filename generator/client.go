@@ -3,15 +3,16 @@ package generator
 import (
 	"bytes"
 	"fmt"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
-	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
-	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 	"log"
 	"os"
 	"path"
 	"strings"
 	"text/template"
+
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
+	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
 )
 
 const apiTemplate = `
@@ -32,13 +33,17 @@ class {{.Name}} {
     {{.Type}} {{.Name}};
     {{end}}
 	
-	factory {{.Name}}.fromJson(Map<String,dynamic> json) {
+	factory {{.Name}}.fromJson(Map<String, dynamic> json) {
 		{{- range .Fields -}}
 			{{if .IsMap}}
-			var {{.Name}}Map = new {{.Type}}();
-			(json['{{.JSONName}}'] as Map<String, dynamic>)?.forEach((key, val) {
+			var {{.Name}}Map = {{.Type}}();
+			(json['{{.JSONName}}'] as Map<String, dynamic>).forEach((key, val) {
 				{{if .MapValueField.IsMessage}}
-				{{.Name}}Map[key] = new {{.MapValueField.Type}}.fromJson(val as Map<String,dynamic>);
+					{{if eq .MapValueField.Type "DateTime"}}
+						{{.Name}}Map[key] = DateTime.parse(val);
+					{{else}}
+						{{.Name}}Map[key] = {{.MapValueField.Type}}.fromJson(val as Map<String, dynamic>);
+					{{end}}
 				{{else}}
 				if (val is String) {
 					{{if eq .MapValueField.Type "double"}}
@@ -46,6 +51,9 @@ class {{.Name}} {
 					{{end}}
 					{{if eq .MapValueField.Type "int"}}
 						{{.Name}}Map[key] = int.parse(val);
+					{{end}}
+					{{if eq .MapValueField.Type "DateTime"}}
+						{{.Name}}Map[key] = DateTime.parse(val);
 					{{end}}
 				} else if (val is num) {
 					{{if eq .MapValueField.Type "double"}}
@@ -60,22 +68,22 @@ class {{.Name}} {
 			{{end}}
 		{{end}}
 
-		return new {{.Name}}(
+		return {{.Name}}(
 		{{- range .Fields -}}
 		{{if .IsMap}}
 		{{.Name}}Map,
 		{{else if and .IsRepeated .IsMessage}}
 		json['{{.JSONName}}'] != null
           ? (json['{{.JSONName}}'] as List)
-              .map((d) => new {{.InternalType}}.fromJson(d))
+              .map((d) => {{.InternalType}}.fromJson(d))
               .toList()
           : <{{.InternalType}}>[],
 		{{else if .IsRepeated }}
 		json['{{.JSONName}}'] != null ? (json['{{.JSONName}}'] as List).cast<{{.InternalType}}>() : <{{.InternalType}}>[],
 		{{else if and (.IsMessage) (eq .Type "DateTime")}}
-		{{.Type}}.tryParse(json['{{.JSONName}}']),
+		{{.Type}}.parse(json['{{.JSONName}}']),
 		{{else if .IsMessage}}
-		new {{.Type}}.fromJson(json['{{.JSONName}}']),
+		{{.Type}}.fromJson(json['{{.JSONName}}']),
 		{{else}}
 		json['{{.JSONName}}'] as {{.Type}}, 
 		{{- end}}
@@ -84,14 +92,14 @@ class {{.Name}} {
 	}
 
 	Map<String,dynamic>toJson() {
-		var map = new Map<String, dynamic>();
+		var map = Map<String, dynamic>();
     	{{- range .Fields -}}
 		{{- if .IsMap }}
 		map['{{.JSONName}}'] = json.decode(json.encode({{.Name}}));
 		{{- else if and .IsRepeated .IsMessage}}
-		map['{{.JSONName}}'] = {{.Name}}?.map((l) => l.toJson())?.toList();
+		map['{{.JSONName}}'] = {{.Name}}.map((l) => l.toJson()).toList();
 		{{- else if .IsRepeated }}
-		map['{{.JSONName}}'] = {{.Name}}?.map((l) => l)?.toList();
+		map['{{.JSONName}}'] = {{.Name}}.map((l) => l).toList();
 		{{- else if and (.IsMessage) (eq .Type "DateTime")}}
 		map['{{.JSONName}}'] = {{.Name}}.toIso8601String();
 		{{- else if .IsMessage}}
@@ -120,12 +128,12 @@ abstract class {{.Name}} {
 
 class Default{{.Name}} implements {{.Name}} {
 	final String hostname;
-    Requester _requester;
+    late Requester _requester;
 	final _pathPrefix = "/twirp/{{.Package}}.{{.Name}}/";
 
-    Default{{.Name}}(this.hostname, {Requester requester}) {
+    Default{{.Name}}(this.hostname, {Requester? requester}) {
 		if (requester == null) {
-      		_requester = new Requester(new Client());
+      		_requester = Requester(Client());
     	} else {
 			_requester = requester;
 		}
@@ -133,9 +141,9 @@ class Default{{.Name}} implements {{.Name}} {
 
     {{range .Methods}}
 	Future<{{.OutputType}}>{{.Name}}({{.InputType}} {{.InputArg}}) async {
-		var url = "${hostname}${_pathPrefix}{{.Path}}";
+		var url = "$hostname${_pathPrefix}{{.Path}}";
 		var uri = Uri.parse(url);
-    	var request = new Request('POST', uri);
+    	var request = Request('POST', uri);
 		request.headers['Content-Type'] = 'application/json';
     	request.body = json.encode({{.InputArg}}.toJson());
     	var response = await _requester.send(request);
@@ -150,9 +158,9 @@ class Default{{.Name}} implements {{.Name}} {
 	Exception twirpException(Response response) {
     	try {
       		var value = json.decode(response.body);
-      		return new TwirpJsonException.fromJson(value);
+      		return TwirpJsonException.fromJson(value);
     	} catch (e) {
-      		return new TwirpException(response.body);
+      		return TwirpException(response.body);
     	}
   	}
 }
@@ -225,8 +233,8 @@ func (ctx *APIContext) ApplyImports(d *descriptor.FileDescriptorProto) {
 	if len(ctx.Services) > 0 {
 		deps = append(deps, Import{"dart:async"})
 		deps = append(deps, Import{"package:http/http.dart"})
-		deps = append(deps, Import{"package:requester/requester.dart"})
-		deps = append(deps, Import{"package:twirp_dart_core/twirp_dart_core.dart"})
+		deps = append(deps, Import{"package:choola/data/common/requester.dart"})
+		deps = append(deps, Import{"package:choola/data/common/twirp_exception.dart"})
 	}
 	deps = append(deps, Import{"dart:convert"})
 
@@ -552,7 +560,7 @@ func parse(f ModelField, modelName string) string {
 		singularType := f.Type[0 : len(f.Type)-2] // strip array brackets from type
 
 		if f.Type == "Date" {
-			return fmt.Sprintf("%s.map((n) => new Date(n))", field)
+			return fmt.Sprintf("%s.map((n) => Date(n))", field)
 		}
 
 		if f.IsMessage {
@@ -561,7 +569,7 @@ func parse(f ModelField, modelName string) string {
 	}
 
 	if f.Type == "Date" {
-		return fmt.Sprintf("new Date(%s)", field)
+		return fmt.Sprintf("Date(%s)", field)
 	}
 
 	if f.IsMessage {

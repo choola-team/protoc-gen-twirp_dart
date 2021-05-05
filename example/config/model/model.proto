@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package config.model;
-option go_package = "github.com/apptreesoftware/protoc-gen-twirp_dart/example/go/config/model";
+option go_package = "github.com/choola-team/protoc-gen-twirp_dart/example/go/config/model";
 
 
 import "google/protobuf/timestamp.proto";
@@ -28,6 +28,7 @@ message Hat {
 
     map<string, int64> dictionary = 8;
     map<string, Size> dictionaryWithMessage = 9;
+    map<string, google.protobuf.Timestamp> timestampMap = 10;
 }
 
 message Color {

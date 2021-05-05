@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/apptreesoftware/protoc-gen-twirp_dart/generator"
-	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 	"io"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
+	"github.com/choola-team/protoc-gen-twirp_dart/generator"
 
 	gogogen "github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/golang/protobuf/proto"

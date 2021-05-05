@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:http/http.dart';
-import 'package:requester/requester.dart';
-import 'package:twirp_dart_core/twirp_dart_core.dart';
+import 'package:choola/data/common/requester.dart';
+import 'package:choola/data/common/twirp_exception.dart';
 import 'dart:convert';
 import '../model/model.twirp.dart';
 
@@ -12,21 +12,21 @@ abstract class Haberdasher {
 
 class DefaultHaberdasher implements Haberdasher {
   final String hostname;
-  Requester _requester;
+  late Requester _requester;
   final _pathPrefix = "/twirp/config.service.Haberdasher/";
 
-  DefaultHaberdasher(this.hostname, {Requester requester}) {
+  DefaultHaberdasher(this.hostname, {Requester? requester}) {
     if (requester == null) {
-      _requester = new Requester(new Client());
+      _requester = Requester(Client());
     } else {
       _requester = requester;
     }
   }
 
   Future<Hat> makeHat(Size size) async {
-    var url = "${hostname}${_pathPrefix}MakeHat";
+    var url = "$hostname${_pathPrefix}MakeHat";
     var uri = Uri.parse(url);
-    var request = new Request('POST', uri);
+    var request = Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.body = json.encode(size.toJson());
     var response = await _requester.send(request);
@@ -38,9 +38,9 @@ class DefaultHaberdasher implements Haberdasher {
   }
 
   Future<Hat> buyHat(Hat hat) async {
-    var url = "${hostname}${_pathPrefix}BuyHat";
+    var url = "$hostname${_pathPrefix}BuyHat";
     var uri = Uri.parse(url);
-    var request = new Request('POST', uri);
+    var request = Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.body = json.encode(hat.toJson());
     var response = await _requester.send(request);
@@ -54,9 +54,9 @@ class DefaultHaberdasher implements Haberdasher {
   Exception twirpException(Response response) {
     try {
       var value = json.decode(response.body);
-      return new TwirpJsonException.fromJson(value);
+      return TwirpJsonException.fromJson(value);
     } catch (e) {
-      return new TwirpException(response.body);
+      return TwirpException(response.body);
     }
   }
 }

@@ -1,3 +1,5 @@
 .idea
 *.iml
 example/dart_client/.packages
+go.mod
+go.sum
