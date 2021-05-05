@@ -1,8 +1,9 @@
 package generator
 
 import (
-	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"path"
+
+	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 )
 
 func dartModuleFilename(f *descriptor.FileDescriptorProto) string {
