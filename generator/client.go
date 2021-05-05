@@ -89,9 +89,9 @@ class {{.Name}} {
 		{{- if .IsMap }}
 		map['{{.JSONName}}'] = json.decode(json.encode({{.Name}}));
 		{{- else if and .IsRepeated .IsMessage}}
-		map['{{.JSONName}}'] = {{.Name}}?.map((l) => l.toJson())?.toList();
+		map['{{.JSONName}}'] = {{.Name}}.map((l) => l.toJson()).toList();
 		{{- else if .IsRepeated }}
-		map['{{.JSONName}}'] = {{.Name}}?.map((l) => l)?.toList();
+		map['{{.JSONName}}'] = {{.Name}}.map((l) => l).toList();
 		{{- else if and (.IsMessage) (eq .Type "DateTime")}}
 		map['{{.JSONName}}'] = {{.Name}}.toIso8601String();
 		{{- else if .IsMessage}}
@@ -120,10 +120,10 @@ abstract class {{.Name}} {
 
 class Default{{.Name}} implements {{.Name}} {
 	final String hostname;
-    Requester _requester;
+    late Requester _requester;
 	final _pathPrefix = "/twirp/{{.Package}}.{{.Name}}/";
 
-    Default{{.Name}}(this.hostname, {Requester requester}) {
+    Default{{.Name}}(this.hostname, {Requester? requester}) {
 		if (requester == null) {
       		_requester = Requester(Client());
     	} else {
@@ -133,7 +133,7 @@ class Default{{.Name}} implements {{.Name}} {
 
     {{range .Methods}}
 	Future<{{.OutputType}}>{{.Name}}({{.InputType}} {{.InputArg}}) async {
-		var url = "${hostname}${_pathPrefix}{{.Path}}";
+		var url = "$hostname${_pathPrefix}{{.Path}}";
 		var uri = Uri.parse(url);
     	var request = Request('POST', uri);
 		request.headers['Content-Type'] = 'application/json';
@@ -225,8 +225,8 @@ func (ctx *APIContext) ApplyImports(d *descriptor.FileDescriptorProto) {
 	if len(ctx.Services) > 0 {
 		deps = append(deps, Import{"dart:async"})
 		deps = append(deps, Import{"package:http/http.dart"})
-		deps = append(deps, Import{"package:requester/requester.dart"})
-		deps = append(deps, Import{"package:twirp_dart_core/twirp_dart_core.dart"})
+		deps = append(deps, Import{"package:choola/data/common/requester.dart"})
+		deps = append(deps, Import{"package:choola/data/common/twirp_exception.dart"})
 	}
 	deps = append(deps, Import{"dart:convert"})
 
