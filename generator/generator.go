@@ -30,3 +30,7 @@ func twirpFilename(fullPath string) string {
 	name += ".twirp.dart"
 	return path.Join(path.Dir(fullPath), name)
 }
+
+func dartDecodersFilename() string {
+	return "/protobuf_decoders.dart"
+}

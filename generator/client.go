@@ -169,6 +169,20 @@ class Default{{.Name}} implements {{.Name}} {
 
 `
 
+const decodersTemplate = `
+{{- range .Imports}}
+import '{{.Path}}';
+{{- end}}
+
+typedef Decoder<T> = T Function(Map<String, dynamic> json);
+
+final Map<Type, Decoder> protobufDecoders = {
+	{{- range .Models}}
+	{{.Name}}: (json) => {{.Name}}.fromJson(json),
+	{{- end}}
+};  
+`
+
 type Model struct {
 	Name         string
 	Primitive    bool
@@ -233,8 +247,8 @@ func (ctx *APIContext) ApplyImports(d *descriptor.FileDescriptorProto) {
 	if len(ctx.Services) > 0 {
 		deps = append(deps, Import{"dart:async"})
 		deps = append(deps, Import{"package:http/http.dart"})
-		deps = append(deps, Import{"package:choola/data/common/requester.dart"})
-		deps = append(deps, Import{"package:choola/data/common/twirp_exception.dart"})
+		deps = append(deps, Import{"package:choola/data/source/common/requester.dart"})
+		deps = append(deps, Import{"package:choola/data/source/common/twirp_exception.dart"})
 	}
 	deps = append(deps, Import{"dart:convert"})
 
@@ -328,12 +342,60 @@ func (ctx *APIContext) enableUnmarshal(m *Model) {
 	}
 }
 
+
+func CreateProtobufDecoderFile(in *plugin_go.CodeGeneratorRequest, generator *generator.Generator) (*plugin_go.CodeGeneratorResponse_File, error) {
+	ctx := NewAPIContext()
+	
+	var deps []Import
+
+	for _, d := range in.GetProtoFile() {
+		// skip google/protobuf/timestamp, we don't do any special serialization for jsonpb.
+		if *d.Name == "google/protobuf/timestamp.proto" {
+			continue
+		}
+		// build imports
+		fullPath := *d.Name
+		base := path.Base(fullPath)
+		name := base[:len(base)-len(path.Ext(base))]
+		deps = append(deps, Import{fmt.Sprintf("%s/%s.twirp.dart", path.Dir(fullPath), name)})
+
+		for _, m := range d.GetMessageType() {
+			model := &Model{
+				Name: m.GetName(),
+			}
+			ctx.AddModel(model)
+		}
+	}
+	
+	ctx.Imports = deps
+	funcMap := template.FuncMap{
+		"stringify": stringify,
+		"parse":     parse,
+	}
+
+	t, err := template.New("decoders").Funcs(funcMap).Parse(decodersTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	b := bytes.NewBufferString("")
+	err = t.Execute(b, ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	cf := &plugin_go.CodeGeneratorResponse_File{}
+	cf.Name = proto.String(dartDecodersFilename())
+	cf.Content = proto.String(b.String())
+
+	return cf, nil
+}
+
 func CreateClientAPI(d *descriptor.FileDescriptorProto, generator *generator.Generator) (*plugin_go.CodeGeneratorResponse_File, error) {
 	ctx := NewAPIContext()
 	pkg := d.GetPackage()
 
 	// Parse all Messages for generating typescript interfaces
-
 	for _, m := range d.GetMessageType() {
 		model := &Model{
 			Name: m.GetName(),
@@ -342,7 +404,6 @@ func CreateClientAPI(d *descriptor.FileDescriptorProto, generator *generator.Gen
 			model.Fields = append(model.Fields, newField(f, m, d, generator))
 		}
 		ctx.AddModel(model)
-
 	}
 
 	// Parse all Services for generating typescript method interfaces and default client implementations
