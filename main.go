@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 	"github.com/choola-team/protoc-gen-twirp_dart/generator"
+	plugin_go "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 
 	gogogen "github.com/gogo/protobuf/protoc-gen-gogo/generator"
 	"github.com/golang/protobuf/proto"
@@ -44,7 +44,7 @@ func generate(in *plugin_go.CodeGeneratorRequest) *plugin_go.CodeGeneratorRespon
 	gen.WrapTypes()
 	gen.SetPackageNames()
 	gen.BuildTypeNameMap()
-	
+
 	// protobuf_decoders.dart
 	cf, err := generator.CreateProtobufDecoderFile(in, gen)
 	if err != nil {
@@ -52,7 +52,7 @@ func generate(in *plugin_go.CodeGeneratorRequest) *plugin_go.CodeGeneratorRespon
 		return resp
 	}
 	resp.File = append(resp.File, cf)
-	
+
 	for _, f := range in.GetProtoFile() {
 		// skip google/protobuf/timestamp, we don't do any special serialization for jsonpb.
 		if *f.Name == "google/protobuf/timestamp.proto" {
@@ -63,11 +63,9 @@ func generate(in *plugin_go.CodeGeneratorRequest) *plugin_go.CodeGeneratorRespon
 			resp.Error = proto.String(err.Error())
 			return resp
 		}
-		
+
 		resp.File = append(resp.File, cf)
 	}
-
-	//resp.File = append(resp.File, generator.RuntimeLibrary())
 
 	return resp
 }
@@ -77,10 +75,7 @@ func writeResponse(w io.Writer, resp *plugin_go.CodeGeneratorResponse) {
 	if err != nil {
 		panic(err)
 	}
-	_, err = w.Write(data)
-	if err != nil {
-
-	}
+	_, _ = w.Write(data)
 }
 
 type Params map[string]string

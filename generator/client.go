@@ -10,9 +10,9 @@ import (
 	"text/template"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 	"github.com/gogo/protobuf/protoc-gen-gogo/descriptor"
 	"github.com/gogo/protobuf/protoc-gen-gogo/generator"
+	plugin_go "github.com/gogo/protobuf/protoc-gen-gogo/plugin"
 )
 
 const apiTemplate = `
@@ -174,9 +174,7 @@ const decodersTemplate = `
 import '{{.Path}}';
 {{- end}}
 
-typedef Decoder<T> = T Function(Map<String, dynamic> json);
-
-final Map<Type, Decoder> protobufDecoders = {
+final Map<Type, dynamic Function(Map<String, dynamic> json)> {{.PackageName}}Decoders = {
 	{{- range .Models}}
 	{{.Name}}: (json) => {{.Name}}.fromJson(json),
 	{{- end}}
@@ -230,6 +228,7 @@ type APIContext struct {
 	Services    []*Service
 	Imports     []Import
 	modelLookup map[string]*Model
+	PackageName string
 }
 
 type Import struct {
@@ -342,11 +341,11 @@ func (ctx *APIContext) enableUnmarshal(m *Model) {
 	}
 }
 
-
 func CreateProtobufDecoderFile(in *plugin_go.CodeGeneratorRequest, generator *generator.Generator) (*plugin_go.CodeGeneratorResponse_File, error) {
 	ctx := NewAPIContext()
-	
+
 	var deps []Import
+	var packageName string
 
 	for _, d := range in.GetProtoFile() {
 		// skip google/protobuf/timestamp, we don't do any special serialization for jsonpb.
@@ -357,7 +356,8 @@ func CreateProtobufDecoderFile(in *plugin_go.CodeGeneratorRequest, generator *ge
 		fullPath := *d.Name
 		base := path.Base(fullPath)
 		name := base[:len(base)-len(path.Ext(base))]
-		deps = append(deps, Import{fmt.Sprintf("%s/%s.twirp.dart", path.Dir(fullPath), name)})
+		packageName = path.Dir(fullPath)
+		deps = append(deps, Import{fmt.Sprintf("%s.twirp.dart", name)})
 
 		for _, m := range d.GetMessageType() {
 			model := &Model{
@@ -366,7 +366,8 @@ func CreateProtobufDecoderFile(in *plugin_go.CodeGeneratorRequest, generator *ge
 			ctx.AddModel(model)
 		}
 	}
-	
+
+	ctx.PackageName = packageName
 	ctx.Imports = deps
 	funcMap := template.FuncMap{
 		"stringify": stringify,
@@ -385,7 +386,7 @@ func CreateProtobufDecoderFile(in *plugin_go.CodeGeneratorRequest, generator *ge
 	}
 
 	cf := &plugin_go.CodeGeneratorResponse_File{}
-	cf.Name = proto.String(dartDecodersFilename())
+	cf.Name = proto.String(dartDecodersFilename(packageName))
 	cf.Content = proto.String(b.String())
 
 	return cf, nil
@@ -525,7 +526,6 @@ func protoToDartType(f *descriptor.FieldDescriptorProto) (string, string, string
 	case descriptor.FieldDescriptorProto_TYPE_DOUBLE:
 		dartType = "double"
 		jsonType = "number"
-		break
 	case descriptor.FieldDescriptorProto_TYPE_FIXED32,
 		descriptor.FieldDescriptorProto_TYPE_FIXED64,
 		descriptor.FieldDescriptorProto_TYPE_INT32,

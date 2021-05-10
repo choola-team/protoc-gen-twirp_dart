@@ -31,6 +31,6 @@ func twirpFilename(fullPath string) string {
 	return path.Join(path.Dir(fullPath), name)
 }
 
-func dartDecodersFilename() string {
-	return "/protobuf_decoders.dart"
+func dartDecodersFilename(packageName string) string {
+	return "/" + packageName + "/" + packageName + "_decoders.twirp.dart"
 }
