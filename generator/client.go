@@ -131,9 +131,6 @@ class {{.Name}} {
 			.post<{{.OutputType}}>(
 				"${_pathPrefix}{{.Path}}",
 				data: {{.InputArg}}.toJson(),
-				options: Options(
-					contentType: Headers.jsonContentType,
-				),
 			)
 			.then((res) => res.data);
 	}
