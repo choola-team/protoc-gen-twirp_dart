@@ -220,7 +220,6 @@ func (ctx *APIContext) ApplyImports(d *descriptor.FileDescriptorProto) {
 
 	if len(ctx.Services) > 0 {
 		deps = append(deps, Import{"dart:async"})
-		deps = append(deps, Import{"dart:convert"})
 		deps = append(deps, Import{"package:choola/common/network/api.dart"})
 		deps = append(deps, Import{"package:dio/dio.dart"})
 	}
