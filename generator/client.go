@@ -120,49 +120,24 @@ class {{.Name}} {
 {{end -}}
 
 {{range .Services}}
-abstract class {{.Name}} {
-	{{- range .Methods}}
-	Future<{{.OutputType}}>{{.Name}}({{.InputType}} {{.InputArg}});
-    {{- end}}
-}
-
-class Default{{.Name}} implements {{.Name}} {
-	final String hostname;
-    late Requester _requester;
+class {{.Name}} {
 	final _pathPrefix = "/twirp/{{.Package}}.{{.Name}}/";
 
-    Default{{.Name}}(this.hostname, {Requester? requester}) {
-		if (requester == null) {
-      		_requester = Requester(Client());
-    	} else {
-			_requester = requester;
-		}
-	}
+    {{.Name}}();
 
     {{range .Methods}}
-	Future<{{.OutputType}}>{{.Name}}({{.InputType}} {{.InputArg}}) async {
-		var url = "$hostname${_pathPrefix}{{.Path}}";
-		var uri = Uri.parse(url);
-    	var request = Request('POST', uri);
-		request.headers['Content-Type'] = 'application/json';
-    	request.body = json.encode({{.InputArg}}.toJson());
-    	var response = await _requester.send(request);
-		if (response.statusCode != 200) {
-     		throw twirpException(response);
-    	}
-    	var value = json.decode(response.body);
-    	return {{.OutputType}}.fromJson(value);
+	Future<{{.OutputType}}> {{.Name}}({{.InputType}} {{.InputArg}}) async {
+		return Api.base
+			.post<{{.OutputType}}>(
+				"${_pathPrefix}{{.Path}}",
+				data: {{.InputArg}}.toJson(),
+				options: Options(
+					contentType: Headers.jsonContentType,
+				),
+			)
+			.then((res) => res.data);
 	}
     {{end}}
-
-	Exception twirpException(Response response) {
-    	try {
-      		var value = json.decode(response.body);
-      		return TwirpJsonException.fromJson(value);
-    	} catch (e) {
-      		return TwirpException(response.body);
-    	}
-  	}
 }
 
 {{end}}
@@ -245,9 +220,9 @@ func (ctx *APIContext) ApplyImports(d *descriptor.FileDescriptorProto) {
 
 	if len(ctx.Services) > 0 {
 		deps = append(deps, Import{"dart:async"})
-		deps = append(deps, Import{"package:http/http.dart"})
-		deps = append(deps, Import{"package:choola/data/source/common/requester.dart"})
-		deps = append(deps, Import{"package:choola/data/source/common/twirp_exception.dart"})
+		deps = append(deps, Import{"dart:convert"})
+		deps = append(deps, Import{"package:choola/common/network/api.dart"})
+		deps = append(deps, Import{"package:dio/dio.dart"})
 	}
 	deps = append(deps, Import{"dart:convert"})
 
