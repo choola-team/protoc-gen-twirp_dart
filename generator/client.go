@@ -105,7 +105,7 @@ class {{.Name}} {
 		{{- else if .IsRepeated }}
 		map['{{.JSONName}}'] = {{.Name}}.map((l) => l).toList();
 		{{- else if and (.IsMessage) (eq .Type "DateTime")}}
-		map['{{.JSONName}}'] = {{.Name}}.toIso8601String();
+		map['{{.JSONName}}'] = {{.Name}}?.toIso8601String();
 		{{- else if .IsMessage}}
 		map['{{.JSONName}}'] = {{.Name}}.toJson();
 		{{- else}}
