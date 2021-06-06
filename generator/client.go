@@ -30,7 +30,11 @@ class {{.Name}} {
 	{{- end}});
 
     {{range .Fields -}}
-    {{.Type}} {{.Name}};
+	{{ if and (.IsMessage) (eq .Type "DateTime")}}
+    {{.Type}}? {{.Name}};
+	{{else}}
+	{{.Type}} {{.Name}};
+	{{- end}}
     {{end}}
 	
 	factory {{.Name}}.fromJson(Map<String, dynamic> json) {
@@ -81,7 +85,7 @@ class {{.Name}} {
 		{{else if .IsRepeated }}
 		json['{{.JSONName}}'] != null ? (json['{{.JSONName}}'] as List).cast<{{.InternalType}}>() : <{{.InternalType}}>[],
 		{{else if and (.IsMessage) (eq .Type "DateTime")}}
-		{{.Type}}.parse(json['{{.JSONName}}']),
+		{{.Type}}.tryParse(json['{{.JSONName}}'] ?? ''),
 		{{else if .IsMessage}}
 		{{.Type}}.fromJson(json['{{.JSONName}}']),
 		{{else}}
